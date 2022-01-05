@@ -25,7 +25,8 @@ suspend fun transformOperator() {
         }
 }
 
-/*this filter operator only gives even value.
+/*filter flow values
+this filter operator only gives even value.
 * if the condition is true it will emit value otherwise filter will ignore that value*/
 suspend fun filterOperator() {
     (1..10).asFlow()
@@ -37,7 +38,8 @@ suspend fun filterOperator() {
         }
 }
 
-/*Here map  operator ,takes the input parameter that flow gives and
+/*map a flow to another flow.
+Here map  operator ,takes the input parameter that flow gives and
 transform it someway here adding some delay  and emit the value as output*/
 suspend fun mapOperator() {
     (1..10).asFlow()
