@@ -22,8 +22,60 @@ fun main() {
 
     //fanIn()
 
+    //bufferedChannel()
+
+    tickerChannel()
+
+}
+
+fun tickerChannel() {
+    /*ticker channel periodically produce a unit after given delay*/
+
+    runBlocking {
+        val tickerChannel = ticker(100)
+        launch {
+            val startTime = System.currentTimeMillis()   //this sender send value periodically with 100 ms delay till it reaches 1000ms
+
+            //receiver
+            tickerChannel.consumeEach {
+                val delta = System.currentTimeMillis() - startTime
+                println("Received tick after $delta")
+            }
+        }
+
+        delay(1000)
+        println("Done!")
+        tickerChannel.cancel()
+    }
+}
+
+fun bufferedChannel() {
+    /*we can send as many value as we want  to channel.
+    * the channel have the capacity to hold all value.
+    * sometimes we may want to limit the capacity of channel.for that we need to use the concept buffered channel */
 
 
+    /*sender send the value once it reached  it capacity ,it will pausing until capacity is available.
+    it will wait for the consumer to consume the sent value  */
+    runBlocking {
+        val channel = Channel<Int>(4) //capacity of channel is 4
+        val sender = launch {
+            repeat(10) {
+                channel.send(it)
+                println("Sent $it")
+            }
+        }
+
+        /*consumer of channel*/
+        repeat(3) {
+            delay(1000)
+            println("Received ${channel.receive()}")
+
+            /*if i add one more receiver here ,sender can send one more value*/
+            //println("Received ${channel.receive()}")
+        }
+        sender.cancel()
+    }
 }
 
 fun fanIn() {
