@@ -12,8 +12,16 @@ suspend fun main() {
 * coroutineScope.launch{}
 *
 * if i start coroutine using GlobalScope.launch{},scope of coroutine is the lifecycle of entire application
+* it launches top level coroutine
+* rarely used launch method
+*
 * coroutineScope.launch{} ,we can start new scope ,does not complete until all children coroutine complete
 * runBlocking{},creates a scope and run coroutine in blocking way.*/
+
+
+    /*coroutine scope is an interface  provides the scope to the coroutine
+    * using this scope we can check track of coroutine work
+    * also it provides function to cancel coroutine and handle error or exception*/
 
 
     println("program execution will now block")
