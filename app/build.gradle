@@ -51,10 +51,7 @@ dependencies {
     testImplementation "org.jetbrains.kotlinx:kotlinx-coroutines-test:$coroutines_version"
 
 
-    // https://mvnrepository.com/artifact/clojure-interop/javax.swing
-    implementation "clojure-interop:javax.swing:'1.0.5'"
 
-    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-swing:$coroutines_version"
 
 
 /* //original

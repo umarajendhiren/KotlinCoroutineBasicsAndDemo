@@ -2,8 +2,5 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/GitHubAPICoroutineDemo/src/main/java/com/anushka/coroutinesdemo1" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/appCoroutineDemo/src/main/java/com/anushka/coroutinesdemo1" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/appCoroutinesDemo/src/main/java/com/anushka/coroutinesdemo1" vcs="Git" />
   </component>
 </project>
