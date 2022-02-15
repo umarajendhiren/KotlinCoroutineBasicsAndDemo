@@ -1,4 +1,5 @@
 rootProject.name = "KotlinCoroutine"
 include ':app'
-include ':appCoroutineDemo'
 
+
+include ':CoroutineDemo'
