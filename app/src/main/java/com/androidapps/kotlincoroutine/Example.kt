@@ -2,6 +2,7 @@ package com.androidapps.kotlincoroutine
 
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
+import kotlin.system.measureTimeMillis
 
 /*Dispatchers and threads:
 * Coroutine uses threads for its execution
@@ -216,7 +217,7 @@ Hello world!*/
 
 /*Naming coroutines for debugging:*/
 
-fun log(msg: String) = println("[${Thread.currentThread().name}] $msg")
+/*fun log(msg: String) = println("[${Thread.currentThread().name}] $msg")*/
 
 /*fun main() = runBlocking(CoroutineName("main")) {
     log("Started main coroutine")
@@ -464,3 +465,362 @@ Done*/
     flowOf(1,4,6).collect { value -> println(value)  }
 }*/
 
+
+/*Intermediate flow operators:
+* flow can be transformed with operator
+* Intermediate operators(map) are applied to an upstream flow and return a downstream flow
+*  These operators are cold, just like flows are
+* A call to such an operator is not a suspending function itself.
+*  It works quickly, returning the definition of a new transformed flow
+* The basic operators have familiar names like map and filter.
+* The important difference to sequences is that blocks of code inside these operators can call suspending functions.
+*
+* For example, a flow of incoming requests can be mapped to the results with the map operator,
+*  even when performing a request is a long-running operation that is implemented by a suspending function:*/
+
+/*suspend fun performRequest(request: Int): String {
+    delay(1000) // imitate long-running asynchronous work
+    return "response $request"
+}
+
+fun main() = runBlocking<Unit> {
+    (1..3).asFlow() // a flow of requests
+        .map { request -> performRequest(request) }
+        .collect { response -> println(response) }
+}*/
+
+/*response 1
+response 2
+response 3*/
+
+
+/*Transform operator:
+Among the flow transformation operators, the most general one is called transform.
+It can be used to imitate simple transformations like map and filter, as well as implement more complex transformations.
+ Using the transform operator, we can emit arbitrary values an arbitrary number of times.
+
+For example, using transform we can emit a string before performing a long-running asynchronous request and follow it with a response:*/
+
+/*
+suspend fun performRequest(request: Int): String {
+    delay(1000) // imitate long-running asynchronous work
+    return "response $request"
+}
+
+fun main() = runBlocking<Unit> {
+    (1..3).asFlow() // a flow of requests
+        .transform { request ->
+            emit("Making request $request")
+            emit(performRequest(request))
+           // emit("got response $request")
+        }
+        .collect { response -> println(response) }
+}*/
+
+/*Making request 1
+response 1
+Making request 2
+response 2
+Making request 3
+response 3*/
+
+
+/*Size-limiting operators:
+Size-limiting intermediate operators like take cancel the execution of the flow when the corresponding limit is reached.
+Cancellation in coroutines is always performed by throwing an exception,
+so that all the resource-management functions (like try { ... } finally { ... } blocks) operate normally in case of cancellation:
+The output of this code clearly shows that the execution of the flow { ... } body in the numbers() function stopped after emitting the second number:*/
+
+
+/*fun numbers(): Flow<Int> = flow {
+    try {
+        emit(1)
+        emit(2)
+        println("This line will not execute")
+        emit(3)
+    } finally {
+        println("Finally in numbers")
+    }
+}
+
+fun main() = runBlocking<Unit> {
+    numbers()
+        .take(2) // take only the first two
+        .collect { value -> println(value) }
+}*/
+
+
+/*Terminal flow operators:
+Terminal operators on flows are suspending functions that start a collection of the flow. The collect operator is the most basic one, but there are other terminal operators, which can make it easier:
+
+Conversion to various collections like toList and toSet.
+
+Operators to get the first value and to ensure that a flow emits a single value.
+
+Reducing a flow to a value with reduce and fold.*/
+
+/*fun main() = runBlocking<Unit> {
+
+    val sum = (1..5).asFlow()
+        .map { it * it } // squares of numbers from 1 to 5
+    .reduce { a, b -> a + b } // sum them (terminal operator)
+    //.toList()  //terminal operator
+    //.toSet() //terminal operator
+    // .first()  //terminal operator
+    //.fold()  //terminal operator
+
+    println(sum)
+}*/
+//55
+
+
+/*Flows are sequential:
+Each individual collection of a flow is performed sequentially unless special operators that operate on multiple flows are used. The collection works directly in the coroutine that calls a terminal operator. No new coroutines are launched by default. Each emitted value is processed by all the intermediate operators from upstream to downstream and is then delivered to the terminal operator after.
+
+See the following example that filters the even integers and maps them to strings:*/
+
+
+/*fun main() = runBlocking<Unit> {
+
+    (1..5).asFlow()
+        .filter {
+            println("Filter $it")
+            it % 2 == 0
+        }
+        .map {
+            println("Map $it")
+            "string $it"
+        }.collect {
+            println("Collect $it")
+        }
+}*/
+
+/*Filter 1
+Filter 2
+Map 2
+Collect string 2
+Filter 3
+Filter 4
+Map 4
+Collect string 4
+Filter 5
+*/
+
+
+
+
+
+fun main() = runBlocking<Unit> {
+
+
+    /*  //flow emits value in the context of collector which is main thread
+      flowContext().collect { value -> log("Collected $value") }
+
+      //flow emits value in the context of collector which is bg thread
+      withContext(Dispatchers.Default) {
+          flowContext().collect { value -> log("Collected $value") }
+      }*/
+
+
+    // wrongEmissionWithContext().collect { value -> println(value) }
+
+    /* ChangeContextOfFlowUsingFlowOnOperator().collect { value ->
+         log("Collected $value")
+
+     }*/
+
+
+    /* val time = measureTimeMillis {
+         buffering().collect { value ->
+             delay(300) // pretend we are processing it for 300 ms
+             println(value)
+         }
+     }
+
+     println("Collected in $time ms")*/
+
+    /* it will take around 1200 sec to finish .flow emit value sequentially to collect .
+    when flow emits second(after 100ms) value ,collector busy with transforming first collected value(takes 300ms) .
+    flow can emit value only collector is available to collect .
+    if we use buffer() operator with collect, flow emit value concurrently without waiting for collector to finish its transformation process  of previous collected  value.
+ */
+
+    /*It produces the same numbers just faster, as we have effectively created a processing pipeline,
+    having to only wait 100 ms for the first number and then spending only 300 ms to process each number.
+    This way it takes around 1000 ms to run:*/
+
+    /*  val timeUsingBuffer = measureTimeMillis {
+          buffering()
+              .buffer() // buffer emissions, don't wait
+              .collect { value ->
+                  delay(300) // pretend we are processing it for 300 ms
+                  println(value)
+              }
+      }
+      println("Collected in $timeUsingBuffer ms")*/
+
+
+    /*We see that while the first number was still being processed the second, and third were already produced,
+    so the second one was conflated and only the most recent (the third one) was delivered to the collector:
+
+1
+3
+Collected in 758 ms*/
+
+    /* val time = measureTimeMillis {
+         conflate()
+             .conflate() // conflate emissions, don't process each one
+             .collect { value ->
+                 delay(300) // pretend we are processing it for 300 ms
+                 println(value)
+             }
+     }
+     println("Collected in $time ms")*/
+
+
+    //zipOperator()
+    combineOperator()
+}
+
+
+/*Flow context:
+flow { ... } builder runs in the context that is provided by a collector of the corresponding flow
+if we call collect() from main thread, flow builder run in the main thread emits the flow on main thread .
+if we call collect() from bg thread flow emits value in bg thread */
+
+fun log(msg: String) = println("[${Thread.currentThread().name}] $msg")
+
+fun flowContext(): Flow<Int> = flow {
+    log("Started simple flow")
+    for (i in 1..3) {
+        emit(i)
+    }
+}
+
+
+/*[main @coroutine#1] Started simple flow
+[main @coroutine#1] Collected 1
+[main @coroutine#1] Collected 2
+[main @coroutine#1] Collected 3
+[DefaultDispatcher-worker-1 @coroutine#1] Started simple flow
+[DefaultDispatcher-worker-1 @coroutine#1] Collected 1
+[DefaultDispatcher-worker-1 @coroutine#1] Collected 2
+[DefaultDispatcher-worker-1 @coroutine#1] Collected 3*/
+
+
+/*wrong emission with context
+* sometimes we may like to start our flow in the context of Dispatchers.Default if we have long running CPU consuming code before emit value
+* At the same time we may like to collect those value in the context Dispatchers.Main to update the UI
+* if we do we will get exception :java.lang.IllegalStateException: Flow invariant is violated:
+* because flow { ... } builder has not allowed to emit from a different context*/
+
+
+fun wrongEmissionWithContext(): Flow<Int> = flow {
+    // The WRONG way to change context for CPU-consuming code in flow builder
+    withContext(Dispatchers.Default) {
+        for (i in 1..3) {
+            delay(100)
+            //Thread.sleep(100) // pretend we are computing it in CPU-consuming way
+            emit(i) // emit next value
+        }
+    }
+}
+
+
+//if we wants to change flow builder context we can use flowOn() operator
+
+fun ChangeContextOfFlowUsingFlowOnOperator(): Flow<Int> = flow {
+    for (i in 1..3) {
+        Thread.sleep(100) // pretend we are computing it in CPU-consuming way
+        log("Emitting $i")
+        emit(i) // emit next value
+    }
+}.flowOn(Dispatchers.Default) // RIGHT way to change context for CPU-consuming code in flow builder.now flow works in the background thread
+
+/*[DefaultDispatcher-worker-1 @coroutine#2] Emitting 1
+[main @coroutine#1] Collected 1
+[DefaultDispatcher-worker-1 @coroutine#2] Emitting 2
+[main @coroutine#1] Collected 2
+[DefaultDispatcher-worker-1 @coroutine#2] Emitting 3
+[main @coroutine#1] Collected 3*/
+
+/*Notice how flow { ... } works in the background thread, while collection happens in the main thread:
+
+Another thing to observe here is that the flowOn operator has changed the default sequential nature of the flow.
+ Now collection happens in one coroutine ("coroutine#1") and emission happens in another coroutine ("coroutine#2") that is running in another thread concurrently with the collecting coroutine.
+The flowOn operator creates another coroutine for an upstream flow when it has to change the CoroutineDispatcher in its context.*/
+
+
+/*Buffering:
+Running different parts of a flow in different coroutines can be helpful from the standpoint of the overall time it takes to collect the flow, especially when long-running asynchronous operations are involved.
+ For example, consider a case when the emission by a simple flow is slow, taking 100 ms to produce an element;
+ and collector is also slow, taking 300 ms to process an element.
+Let's see how long it takes to collect such a flow with three numbers:*/
+
+fun buffering(): Flow<Int> = flow {
+    for (i in 1..3) {
+        delay(100) // pretend we are asynchronously waiting 100 ms
+        emit(i) // emit next value
+    }
+}
+
+
+/*Conflation:
+When a flow represents partial results of the operation or operation status updates,
+it may not be necessary to process each value, but instead, only most recent ones.
+In this case, the conflate operator can be used to skip intermediate values when a collector is too slow to process them. Building on the previous example:*/
+
+fun conflate(): Flow<Int> = flow {
+    for (i in 1..3) {
+        delay(100) // pretend we are asynchronously waiting 100 ms
+        emit(i) // emit next value
+    }
+}
+
+
+/*Composing multiple flows:
+* There are lots of ways to compose multiple flows.
+* Just like the Sequence.zip extension function in the Kotlin standard library,
+*  flows have a zip operator that combines the corresponding values of two flows:*/
+
+fun zipOperator() {
+    runBlocking {
+        val nums = (1..3).asFlow() // numbers 1..3
+        val strs = flowOf("one", "two", "three") // strings
+        nums.zip(strs) { a, b -> "$a -> $b" } // compose a single string
+            .collect { println(it) } // collect and print
+    }
+}
+
+
+/*combine operator:
+For example, if the numbers in the below example update every 300ms, but strings update every 400 ms,
+then zipping them using the zip operator will still produce the same result,
+ albeit results that are printed every 400 ms:*/
+
+fun combineOperator() {
+    runBlocking {
+        val nums = (1..3).asFlow().onEach { delay(300) } // numbers 1..3 every 300 ms
+        val strs = flowOf("one", "two", "three").onEach { delay(400) } // strings every 400 ms
+        val startTime = System.currentTimeMillis() // remember the start time
+        nums.zip(strs) { a, b -> "$a -> $b" } // compose a single string with "zip"
+            .collect { value -> // collect and print
+                println("$value at ${System.currentTimeMillis() - startTime} ms from start")
+            }
+    }
+
+
+
+    /*We get quite a different output, where a line is printed at each emission from either nums or strs flows:*/
+
+    runBlocking<Unit> {
+
+        val nums = (1..3).asFlow().onEach { delay(300) } // numbers 1..3 every 300 ms
+        val strs = flowOf("one", "two", "three").onEach { delay(400) } // strings every 400 ms
+        val startTime = System.currentTimeMillis() // remember the start time
+        nums.combine(strs) { a, b -> "$a -> $b" } // compose a single string with "combine"
+            .collect { value -> // collect and print
+                println("$value at ${System.currentTimeMillis() - startTime} ms from start")
+            }
+    }
+}
