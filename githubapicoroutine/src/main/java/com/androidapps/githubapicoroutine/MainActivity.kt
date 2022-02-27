@@ -1,4 +1,4 @@
-package com.androidapps.coroutinedemo
+package com.androidapps.githubapicoroutine
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
