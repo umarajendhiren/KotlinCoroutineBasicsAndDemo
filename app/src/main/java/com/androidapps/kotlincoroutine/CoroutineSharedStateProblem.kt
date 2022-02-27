@@ -30,7 +30,7 @@ fun sharedStateVariableProblem() {
 
 fun accessSharedStateUsingAtomic() {
     //atomic counter
-    /*it works well for primitive type line integer ,boolean,long and collection.
+    /*it works well for primitive type like integer ,boolean,long and collection.
      * but if we are using custom class ,it is difficult to make that object as atomic.
     * we need to provide implementation for that object .*/
 

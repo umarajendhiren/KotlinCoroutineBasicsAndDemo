@@ -679,7 +679,13 @@ Collected in 758 ms*/
 
 
     //zipOperator()
-    combineOperator()
+    //combineOperator()
+
+    //collect1to5TryCatch()
+
+    //launchInTerminalOperator()
+
+    flowBuilderCancellable()
 }
 
 
@@ -810,7 +816,6 @@ fun combineOperator() {
     }
 
 
-
     /*We get quite a different output, where a line is printed at each emission from either nums or strs flows:*/
 
     runBlocking<Unit> {
@@ -821,6 +826,158 @@ fun combineOperator() {
         nums.combine(strs) { a, b -> "$a -> $b" } // compose a single string with "combine"
             .collect { value -> // collect and print
                 println("$value at ${System.currentTimeMillis() - startTime} ms from start")
+            }
+    }
+}
+
+fun flow1to5(): Flow<Int> =
+    flow {
+
+        for (i in 1..5) {
+            println("emitting $i")
+            emit(i)
+        }
+    }
+
+fun collect1to5TryCatch() {
+    runBlocking {
+
+
+        //catch exception for code within flow
+        flow1to5().onEach { value -> check(value <= 3) }
+            .catch { e -> println("caught an exception $e") }
+            .collect { value -> println("collecting $value") }
+
+
+        //map flow
+        flow1to5().map { value -> "String $value" }
+            .collect { value -> println("collecting $value") }
+
+        //caught exception after map
+        flow1to5().map { value ->
+            check(value <= 3) { "throwing exception for $value" } //will throw exception for 4
+            "String $value"
+        }
+            .catch { e -> println("caught $e") }
+            .collect { value -> println("collecting $value") }
+
+        /*  flow1to5()
+            .catch { e -> println("caught $e") } //does not catch downstream  .only catch upstream exception(with in flow or map)
+            .collect { value ->
+                println("collecting $value")
+                check(value <= 3)  //this will produce exception when collection 4
+            }*/
+
+        flow1to5()
+            .collect { value ->
+                println("collecting $value")
+                // check(value <= 3)  //this will produce exception when collection 4
+            }
+        // .catch { e -> println("caught $e") }  we can not call catch operator here after collect
+
+
+        //catch exception when collect using try catch not using  catch{}  operator because it won't work after collect
+        try {
+
+            flow1to5().collect { value ->
+                check(value <= 3)
+                println("collecting $value")
+            }
+        } catch (e: Exception) {
+            println("exception is $e")
+        }
+
+
+        //after collection is completed we might need to do some tasks. for that we can use finally block or onCompletion() intermediate operator
+        try {
+            flow1to5().collect { value ->
+                println("collecting $value")
+            }
+        }
+        //we can use finally with or without catch
+        //Imperative finally block
+        finally {
+            println("collection completed")
+        }
+
+        //using onCompletion()
+        flow1to5()
+            .onCompletion { println("collection completed") }
+            .collect { value ->
+                println("collecting $value")
+            }
+
+        //Declarative handling
+        //we can use this operator to determine whether the  flow completed normally or exceptionally
+        //we can not use this operator to catch exception
+
+        flow1to5().onEach { value -> check(value <= 3) }
+            .onCompletion { cause ->
+                if (cause != null) println("collection completed with exception")
+                else println("collection completed normally ")
+            }
+            .catch { e -> print("caught $e") }
+            .collect { value ->
+                println("collecting $value")
+            }
+
+    }
+
+
+}
+
+
+fun launchInTerminalOperator() {
+    //the code after collect() terminal operator will wait until flow is collected
+    runBlocking {
+        flow1to5()
+            .onEach { event ->
+                delay(1000)
+                println("Event: $event")
+            }
+            .collect()
+        println("done")  //this will be printed after collection is completed
+    }
+
+    //if we wants to print first we can use launchIn operator
+    runBlocking {
+        flow1to5()
+            .onEach { event ->
+                delay(1000)
+                println("Event: $event")
+            }
+            .launchIn(this)  // <--- Launching the flow in a separate coroutine
+        println("done")  //this will be printed first
+    }
+
+
+}
+
+fun flowBuilderCancellable() {
+    /*flow builder is cancellable flow{}.which means flow emitted from flow{} builder is cancellable
+    * if we try to emit value after cancellation of flow  ,we will get exception
+    * but asFlow() is not cancellable
+    * if we try to cancel asFlow(),All numbers from 1 to 5 are collected and cancellation gets detected only before return from runBlocking:
+    * for that we can use cancellable() operator to check whether flow canceled or not in asFlow()*/
+    runBlocking {
+        //emits using flow{} builder
+        /* flow1to5().collect { value ->
+             if (value == 3)
+                 cancel()  //We get only numbers up to 3 and a JobCancellationException after trying to emit number 4
+         }*/
+
+        //emits using asFlow() operator
+        /*(1..5).asFlow().collect{ value->
+            if (value == 3)
+                cancel()  //All numbers from 1 to 5 are collected and cancellation gets detected
+            println(value)
+        }*/
+
+        (1..5).asFlow().cancellable() //checks flow cancelled or not before collect
+            .collect { value ->
+                if (value == 3)
+                    cancel()  // //We get only numbers up to 3 and a JobCancellationException after trying to emit number 4
+                println(value)
             }
     }
 }
